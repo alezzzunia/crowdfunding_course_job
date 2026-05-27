@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Краудфандинг Аналітика</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f5f0; color: #222; }
+  header { background: #1a1a2e; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header span { font-size: 12px; opacity: 0.6; margin-left: auto; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #ddd; margin-bottom: 20px; }
+  .tab { padding: 10px 18px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: none; color: #666; border-bottom: 3px solid transparent; }
+  .tab.active { color: #1a1a2e; border-color: #6c63ff; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Метрики */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .metric { background: #fff; border-radius: 10px; padding: 14px 16px; border: 1px solid #e8e8e8; }
+  .metric-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+  .metric-value { font-size: 24px; font-weight: 700; color: #1a1a2e; }
+  .metric-sub { font-size: 11px; color: #4caa6e; margin-top: 4px; }
+
+  /* Графіки */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .chart-box { background: #fff; border-radius: 10px; padding: 16px; border: 1px solid #e8e8e8; }
+  .chart-box h3 { font-size: 13px; color: #555; margin-bottom: 12px; font-weight: 600; }
+
+  /* Таблиця */
+  .table-box { background: #fff; border-radius: 10px; border: 1px solid #e8e8e8; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f9f9f6; color: #888; font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 1px solid #eee; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; }
+  tr:last-child td { border: none; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-active   { background: #e8f5e9; color: #2e7d32; }
+  .badge-completed { background: #e3f2fd; color: #1565c0; }
+  .badge-risk     { background: #fff3e0; color: #e65100; }
+  .prog { background: #eee; border-radius: 4px; height: 6px; }
+  .prog-fill { height: 6px; border-radius: 4px; background: #6c63ff; }
+
+  /* Viber бот */
+  .bot-layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+  .phone-wrap { background: #fff; border-radius: 10px; padding: 12px; border: 1px solid #e8e8e8; }
+  .phone-header { background: #6c63ff; border-radius: 8px 8px 0 0; padding: 10px 14px; color: #fff; display: flex; align-items: center; gap: 8px; }
+  .phone-body { background: #ede9ff; min-height: 280px; max-height: 350px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; border-radius: 0 0 8px 8px; }
+  .msg { max-width: 80%; padding: 8px 12px; border-radius: 10px; font-size: 12px; line-height: 1.5; white-space: pre-line; }
+  .msg-bot  { background: #fff; color: #333; align-self: flex-start; border-bottom-left-radius: 2px; }
+  .msg-user { background: #6c63ff; color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+  .chat-input { display: flex; gap: 8px; margin-top: 8px; }
+  .chat-input input { flex: 1; padding: 8px 12px; border-radius: 20px; border: 1px solid #ddd; font-size: 13px; }
+  .chat-input button { background: #6c63ff; color: #fff; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer; }
+  .cmd-panel { background: #fff; border-radius: 10px; padding: 14px; border: 1px solid #e8e8e8; }
+  .cmd-panel h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .cmd-btn { width: 100%; text-align: left; background: none; border: 1px solid #eee; border-radius: 8px; padding: 8px 12px; font-size: 12px; cursor: pointer; margin-bottom: 6px; transition: background .1s; }
+  .cmd-btn:hover { background: #f5f5ff; }
+  .cmd-btn code { color: #6c63ff; font-family: monospace; }
+
+  /* API-логи */
+  .log-table { background: #fff; border-radius: 10px; border: 1px solid #e8e8e8; overflow: hidden; }
+  .api-test { background: #fff; border-radius: 10px; padding: 16px; border: 1px solid #e8e8e8; margin-bottom: 16px; }
+  .api-test h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .api-test input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; margin-bottom: 8px; }
+  .api-test button { background: #1a1a2e; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; cursor: pointer; }
+  .api-test pre { background: #f9f9f6; border-radius: 8px; padding: 10px; font-size: 11px; overflow-x: auto; margin-top: 10px; white-space: pre-wrap; }
+
+  .loading { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:22px;">📊</div>
+  <h1>Краудфандинг Аналітика</h1>
+  <span id="server-time">Завантаження...</span>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('dashboard')">📊 Дашборд</button>
+    <button class="tab" onclick="switchTab('campaigns')">📋 Кампанії</button>
+    <button class="tab" onclick="switchTab('charts')">📈 Графіки</button>
+    <button class="tab" onclick="switchTab('viber')">💬 Viber Бот</button>
+    <button class="tab" onclick="switchTab('api')">🔧 API Тест</button>
+  </div>
+
+  <!-- ДАШБОРД -->
+  <div id="tab-dashboard" class="section active">
+    <div class="metrics" id="metrics-grid">
+      <div class="loading">Завантаження метрик...</div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h3>Збір по місяцях (грн)</h3>
+        <div style="position:relative;height:220px;"><canvas id="chart-monthly" role="img" aria-label="Збір по місяцях"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <h3>Розподіл по категоріях</h3>
+        <div style="position:relative;height:220px;"><canvas id="chart-cat" role="img" aria-label="Категорії кампаній"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- КАМПАНІЇ -->
+  <div id="tab-campaigns" class="section">
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+      <select id="filter-cat" style="padding:7px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;" onchange="loadCampaigns()">
+        <option value="">Усі категорії</option>
+        <option>Технології</option><option>Соціальні</option>
+        <option>Мистецтво</option><option>Наука</option><option>Освіта</option>
+      </select>
+      <select id="filter-status" style="padding:7px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;" onchange="loadCampaigns()">
+        <option value="">Усі статуси</option>
+        <option value="active">Активні</option>
+        <option value="completed">Завершені</option>
+      </select>
+      <button onclick="loadCampaigns()" style="background:#6c63ff;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;">Оновити</button>
+    </div>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>#</th><th>Назва</th><th>Категорія</th><th>Ціль</th><th>Зібрано</th><th>Прогрес</th><th>Статус</th><th>ML-ризик</th></tr></thead>
+        <tbody id="campaigns-tbody"><tr><td colspan="8" class="loading">Завантаження...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ГРАФІКИ -->
+  <div id="tab-charts" class="section">
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h3>Топ-5 кампаній за збором</h3>
+        <div style="position:relative;height:250px;"><canvas id="chart-top" role="img" aria-label="Топ кампанії"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <h3>Успішні vs невдалі кампанії</h3>
+        <div style="position:relative;height:250px;"><canvas id="chart-success" role="img" aria-label="Успішність кампаній"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-box">
+      <h3>Розподіл відсотка досягнення цілі</h3>
+      <div style="position:relative;height:200px;"><canvas id="chart-progress" role="img" aria-label="Розподіл прогресу"></canvas></div>
+    </div>
+  </div>
+
+  <!-- VIBER БОТ -->
+  <div id="tab-viber" class="section">
+    <div class="bot-layout">
+      <div>
+        <div class="phone-wrap">
+          <div class="phone-header">
+            <div style="font-size:20px;">🤖</div>
+            <div><div style="font-weight:600;font-size:13px;">CrowdBot UA</div><div style="font-size:11px;opacity:.7;">Бот аналізу кампаній</div></div>
+          </div>
+          <div class="phone-body" id="chat-body">
+            <div class="msg msg-bot">👋 Вітаю! Я CrowdBot — ваш помічник з аналізу краудфандингових кампаній.
+
+Натисніть команду праворуч або введіть текст.</div>
+          </div>
+          <div class="chat-input">
+            <input id="chat-input" type="text" placeholder="Введіть команду..." onkeydown="if(event.key==='Enter')sendChat()" />
+            <button onclick="sendChat()">➤</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="cmd-panel">
+          <h3>Команди бота</h3>
+          <button class="cmd-btn" onclick="sendCmd('/топ')"><code>/топ</code> — топ кампанії</button>
+          <button class="cmd-btn" onclick="sendCmd('/статус')"><code>/статус</code> — статистика</button>
+          <button class="cmd-btn" onclick="sendCmd('/ризики')"><code>/ризики</code> — ML аналіз ризиків</button>
+          <button class="cmd-btn" onclick="sendCmd('/категорії')"><code>/категорії</code> — по категоріях</button>
+          <button class="cmd-btn" onclick="sendCmd('/допомога')"><code>/допомога</code> — всі команди</button>
+          <button class="cmd-btn" onclick="sendCmd('/кампанія 1')"><code>/кампанія 1</code> — деталі #1</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API ТЕСТ -->
+  <div id="tab-api" class="section">
+    <div class="api-test">
+      <h3>Тест REST API</h3>
+      <input id="api-url" type="text" value="/api/campaigns" placeholder="URL ендпоінту" />
+      <button onclick="testApi()">Виконати GET</button>
+      <pre id="api-result">Натисніть "Виконати GET" щоб побачити відповідь...</pre>
+    </div>
+    <div class="log-table">
+      <table>
+        <thead><tr><th>Час</th><th>Команда</th><th>Відповідь (початок)</th></tr></thead>
+        <tbody id="logs-tbody"><tr><td colspan="3" class="loading">Завантаження логів...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "";
+
+async function apiFetch(url) {
+  const r = await fetch(API + url);
+  return r.json();
+}
+
+// Час
+setInterval(() => {
+  document.getElementById("server-time").textContent = new Date().toLocaleString("uk");
+}, 1000);
+
+// ── ДАШБОРД ──
+async function loadDashboard() {
+  const stats = await apiFetch("/api/stats/summary");
+  document.getElementById("metrics-grid").innerHTML = `
+    <div class="metric"><div class="metric-label">Кампаній всього</div><div class="metric-value">${stats.total_campaigns}</div></div>
+    <div class="metric"><div class="metric-label">Активних</div><div class="metric-value">${stats.active}</div></div>
+    <div class="metric"><div class="metric-label">Успішність</div><div class="metric-value">${stats.success_rate}%</div></div>
+    <div class="metric"><div class="metric-label">Зібрано (грн)</div><div class="metric-value">₴${(stats.total_funds/1e6).toFixed(1)}M</div></div>
+    <div class="metric"><div class="metric-label">Пожертв</div><div class="metric-value">${stats.total_donations}</div></div>
+    <div class="metric"><div class="metric-label">Ср. пожертва</div><div class="metric-value">₴${Math.round(stats.avg_donation)}</div></div>
+  `;
+
+  const monthly = await apiFetch("/api/stats/monthly");
+  new Chart(document.getElementById("chart-monthly"), {
+    type: "line",
+    data: {
+      labels: monthly.monthly.map(m => m.month),
+      datasets: [{ label: "Збір (грн)", data: monthly.monthly.map(m => Math.round(m.total)), borderColor: "#6c63ff", backgroundColor: "rgba(108,99,255,.08)", fill: true, tension: 0.4, pointRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+
+  const cats = await apiFetch("/api/stats/by_category");
+  const colors = ["#6c63ff","#e8883a","#4caa6e","#c05a9c","#3266ad"];
+  new Chart(document.getElementById("chart-cat"), {
+    type: "doughnut",
+    data: {
+      labels: cats.categories.map(c => c.category),
+      datasets: [{ data: cats.categories.map(c => c.count), backgroundColor: colors, borderWidth: 2, borderColor: "#fff" }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: "55%", plugins: { legend: { position: "right", labels: { font: { size: 11 } } } } }
+  });
+}
+
+// ── КАМПАНІЇ ──
+async function loadCampaigns() {
+  const cat    = document.getElementById("filter-cat").value;
+  const status = document.getElementById("filter-status").value;
+  let url = "/api/campaigns?sort=collected";
+  if (cat)    url += "&category=" + encodeURIComponent(cat);
+  if (status) url += "&status=" + encodeURIComponent(status);
+
+  const data = await apiFetch(url);
+  const tbody = document.getElementById("campaigns-tbody");
+
+  if (!data.campaigns.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">Кампаній не знайдено</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.campaigns.map(c => {
+    const pct   = c.progress_pct;
+    const risk  = pct < 20 ? '<span class="badge badge-risk">Високий</span>' :
+                  pct < 60 ? '<span class="badge" style="background:#fffde7;color:#f57f17;">Середній</span>' :
+                             '<span class="badge badge-active">Низький</span>';
+    const badge = c.status === "completed"
+      ? '<span class="badge badge-completed">Завершена</span>'
+      : '<span class="badge badge-active">Активна</span>';
+    return `<tr>
+      <td>${c.id}</td>
+      <td><strong>${c.title}</strong></td>
+      <td>${c.category}</td>
+      <td>₴${c.goal.toLocaleString("uk")}</td>
+      <td>₴${c.collected.toLocaleString("uk")}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="prog" style="flex:1;"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${pct>=100?'#4caa6e':pct>50?'#6c63ff':'#e8883a'};"></div></div>
+          <span style="font-size:11px;white-space:nowrap;">${pct}%</span>
+        </div>
+      </td>
+      <td>${badge}</td>
+      <td>${risk}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── ГРАФІКИ ──
+async function loadCharts() {
+  const data = await apiFetch("/api/campaigns?sort=collected&limit=5");
+  const top  = data.campaigns.slice(0, 5);
+
+  new Chart(document.getElementById("chart-top"), {
+    type: "bar",
+    data: {
+      labels: top.map(c => c.title),
+      datasets: [
+        { label: "Ціль",    data: top.map(c => c.goal),      backgroundColor: "rgba(200,200,200,.5)" },
+        { label: "Зібрано", data: top.map(c => c.collected), backgroundColor: "#6c63ff" }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "top" } }, scales: { y: { ticks: { callback: v => "₴"+Math.round(v/1000)+"к" } } } }
+  });
+
+  const all = await apiFetch("/api/campaigns?limit=100");
+  const cmp = all.campaigns;
+  const completed = cmp.filter(c => c.status === "completed").length;
+  const active    = cmp.filter(c => c.status === "active").length;
+
+  new Chart(document.getElementById("chart-success"), {
+    type: "pie",
+    data: {
+      labels: ["Завершені ✅", "Активні 🔥"],
+      datasets: [{ data: [completed, active], backgroundColor: ["#4caa6e","#6c63ff"], borderWidth: 2, borderColor: "#fff" }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+
+  const buckets = [0,0,0,0,0];
+  cmp.forEach(c => {
+    const p = c.progress_pct;
+    if (p < 25) buckets[0]++;
+    else if (p < 50) buckets[1]++;
+    else if (p < 75) buckets[2]++;
+    else if (p < 100) buckets[3]++;
+    else buckets[4]++;
+  });
+
+  new Chart(document.getElementById("chart-progress"), {
+    type: "bar",
+    data: {
+      labels: ["< 25%","25–50%","50–75%","75–100%","≥ 100%"],
+      datasets: [{ label: "Кампаній", data: buckets, backgroundColor: ["#e74c3c","#e8883a","#3266ad","#6c63ff","#4caa6e"] }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+}
+
+// ── VIBER БОТ ──
+function addMsg(text, isUser) {
+  const body = document.getElementById("chat-body");
+  const div  = document.createElement("div");
+  div.className = "msg " + (isUser ? "msg-user" : "msg-bot");
+  div.textContent = text;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+async function sendChat() {
+  const inp = document.getElementById("chat-input");
+  const val = inp.value.trim();
+  if (!val) return;
+  inp.value = "";
+  addMsg(val, true);
+  await callBot(val);
+}
+
+async function sendCmd(cmd) {
+  addMsg(cmd, true);
+  await callBot(cmd);
+}
+
+async function callBot(text) {
+  try {
+    const r = await fetch("/api/bot/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text })
+    });
+    const data = await r.json();
+    addMsg(data.response, false);
+  } catch (e) {
+    addMsg("❌ Помилка з'єднання з сервером", false);
+  }
+}
+
+// ── API ТЕСТ ──
+async function testApi() {
+  const url = document.getElementById("api-url").value;
+  try {
+    const r    = await fetch(url);
+    const data = await r.json();
+    document.getElementById("api-result").textContent = JSON.stringify(data, null, 2);
+  } catch (e) {
+    document.getElementById("api-result").textContent = "Помилка: " + e.message;
+  }
+}
+
+async function loadLogs() {
+  const data  = await apiFetch("/api/bot/logs");
+  const tbody = document.getElementById("logs-tbody");
+  if (!data.logs.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#aaa;padding:14px;">Логів поки немає</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.logs.map(l => `
+    <tr>
+      <td style="font-size:11px;color:#888;">${l.created_at}</td>
+      <td><code style="font-size:12px;">${l.command}</code></td>
+      <td style="font-size:11px;color:#555;">${l.response.substring(0,80)}...</td>
+    </tr>
+  `).join("");
+}
+
+// ── ПЕРЕКЛЮЧЕННЯ ВКЛАДОК ──
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  event.currentTarget.classList.add("active");
+  document.getElementById("tab-" + name).classList.add("active");
+
+  if (name === "campaigns") loadCampaigns();
+  if (name === "charts")    loadCharts();
+  if (name === "api")       loadLogs();
+}
+
+// Початкове завантаження
+loadDashboard();
+</script>
+</body>
+</html>
